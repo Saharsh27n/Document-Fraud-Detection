@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 10px; color: #222; background: #fff; width: 794px; }
+  .top-header { display: flex; border-bottom: 3px double #c00; padding: 12px 20px; gap: 16px; align-items: center; }
+  .top-header img { width: 55px; height: 55px; object-fit: contain; }
+  .hosp-info h1 { font-size: 17px; font-weight: bold; color: #c00; }
+  .hosp-info p { font-size: 9px; color: #555; }
+  .two-col-header { display: flex; border-bottom: 2px solid #c00; }
+  .patient-col { flex: 1; padding: 10px 20px; border-right: 1px solid #ddd; }
+  .bill-col { width: 220px; padding: 10px 20px; }
+  .col-heading { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #c00; border-bottom: 1px solid #c00; margin-bottom: 6px; padding-bottom: 2px; }
+  .grid-field { display: grid; grid-template-columns: 110px 1fr; margin-bottom: 3px; font-size: 10px; }
+  .grid-field .k { color: #666; }
+  .grid-field .v { font-weight: bold; }
+  table.items { width: 100%; border-collapse: collapse; font-size: 9.5px; margin: 0; }
+  table.items th { background: #c00; color: white; padding: 4px 10px; text-align: left; font-size: 9px; }
+  table.items td { padding: 3px 10px; border: 1px solid #ddd; }
+  table.items tr:nth-child(even) td { background: #fff5f5; }
+  .totals-compact { width: 100%; border-top: 2px solid #c00; display: flex; justify-content: flex-end; padding: 6px 20px; }
+  .tc-inner { width: 240px; }
+  .tc-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10px; }
+  .tc-row.disc { color: #c00; }
+  .tc-row.gt { font-size: 12px; font-weight: bold; background: #c00; color: white; padding: 5px 8px; border-radius: 2px; margin-top: 3px; }
+  .footer-compact { display: flex; justify-content: space-between; padding: 8px 20px; border-top: 1px solid #ccc; font-size: 9px; color: #666; }
+  .sig-box { border: 1px solid #999; width: 130px; height: 45px; text-align: center; padding-top: 28px; font-size: 9px; color: #666; }
+</style>
+</head>
+<body>
+<div class="top-header">
+  <img src="{{ logo_path }}" alt="logo">
+  <div class="hosp-info">
+    <h1>{{ hospital_name }}</h1>
+    <p>{{ hospital_address }}</p>
+    <p>{{ hospital_phone }} | {{ hospital_email }}</p>
+  </div>
+  <div style="margin-left:auto; text-align:right">
+    <div style="font-size:18px; font-weight:bold; color:#c00">MEDICAL INVOICE</div>
+    <div style="font-size:11px; font-weight:bold"># {{ bill_number }}</div>
+  </div>
+</div>
+<div class="two-col-header">
+  <div class="patient-col">
+    <div class="col-heading">Patient Information</div>
+    <div class="grid-field"><span class="k">Patient Name</span><span class="v">{{ patient_name }}</span></div>
+    <div class="grid-field"><span class="k">Patient ID</span><span class="v">{{ patient_id }}</span></div>
+    <div class="grid-field"><span class="k">Age / Sex</span><span class="v">{{ age_sex }}</span></div>
+    <div class="grid-field"><span class="k">Attending Doctor</span><span class="v">{{ doctor_name }}</span></div>
+    <div class="grid-field"><span class="k">Diagnosis</span><span class="v">{{ diagnosis }}</span></div>
+  </div>
+  <div class="bill-col">
+    <div class="col-heading">Billing Information</div>
+    <div class="grid-field"><span class="k">Bill Date</span><span class="v">{{ bill_date }}</span></div>
+    <div class="grid-field"><span class="k">Admission</span><span class="v">{{ admission_date }}</span></div>
+    <div class="grid-field"><span class="k">Discharge</span><span class="v">{{ discharge_date }}</span></div>
+    <div class="grid-field"><span class="k">Payment Mode</span><span class="v">{{ payment_mode }}</span></div>
+  </div>
+</div>
+<table class="items">
+  <thead>
+    <tr><th style="width:42%">Service / Item Description</th><th style="width:8%">Qty</th><th style="width:15%">Unit Rate (₹)</th><th style="width:15%">Amount (₹)</th></tr>
+  </thead>
+  <tbody>
+    {% for item in line_items %}
+    <tr>
+      <td>{{ item.description }}</td>
+      <td style="text-align:center">{{ item.qty }}</td>
+      <td style="text-align:right">{{ item.rate }}</td>
+      <td style="text-align:right">{{ item.amount }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="totals-compact">
+  <div class="tc-inner">
+    <div class="tc-row"><span>Subtotal</span><span>₹ {{ subtotal }}</span></div>
+    <div class="tc-row disc"><span>Discount {{ discount_pct }}%</span><span>- ₹ {{ discount_amt }}</span></div>
+    <div class="tc-row"><span>GST {{ tax_pct }}%</span><span>₹ {{ tax_amt }}</span></div>
+    <div class="tc-row gt"><span>NET TOTAL</span><span>₹ {{ total }}</span></div>
+  </div>
+</div>
+<div class="footer-compact">
+  <div>
+    <b>Amount in Words:</b> {{ total_words }}<br>
+    <span style="margin-top:4px; display:block">This is a computer-generated invoice.</span>
+  </div>
+  <div class="sig-box">Authorised Signatory</div>
+</div>
+</body>
+</html>

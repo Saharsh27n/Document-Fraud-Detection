@@ -1,0 +1,17 @@
+opencv-python
+playwright
+jinja2
+faker
+reportlab
+pymupdf
+torch
+torchvision
+networkx
+easyocr
+scikit-learn
+matplotlib
+pandas
+numpy
+Pillow
+scipy
+layoutparser        # optional — pipeline must run without it

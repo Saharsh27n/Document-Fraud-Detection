@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Courier New", Courier, monospace; font-size: 10px; color: #000; background: #fff; width: 794px; border: 3px double #000; padding: 0; }
+  .gov-title-bar { border-bottom: 3px double #000; padding: 10px; text-align: center; }
+  .gov-title-bar h1 { font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; }
+  .gov-title-bar p { font-size: 9px; margin-top: 3px; }
+  .gov-header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 2px solid #000; }
+  .gov-header img { width: 70px; height: 70px; object-fit: contain; border: 2px solid #000; padding: 4px; }
+  .gov-header-info h2 { font-size: 13px; text-transform: uppercase; }
+  .gov-header-info p { font-size: 9px; line-height: 1.6; }
+  .gov-header-right { margin-left: auto; border: 2px solid #000; padding: 8px 12px; font-size: 9px; }
+  .gov-header-right p { margin-bottom: 3px; }
+  .box-section { border: 2px solid #000; margin: 10px 16px; }
+  .box-section-title { background: #000; color: white; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; }
+  .box-section-body { padding: 8px 10px; }
+  .gov-field-row { display: flex; gap: 0; margin-bottom: 4px; }
+  .gf { flex: 1; }
+  .gf .k { font-size: 9px; text-transform: uppercase; }
+  .gf .v { font-size: 10px; font-weight: bold; text-decoration: underline; }
+  table.items { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.items th { border: 2px solid #000; padding: 4px 8px; text-align: center; background: #ddd; font-size: 9px; text-transform: uppercase; }
+  table.items td { border: 1px solid #000; padding: 3px 8px; }
+  .totals-gov { display: flex; padding: 0 16px 10px; gap: 20px; }
+  .totals-gov-left { flex: 1; font-size: 9px; }
+  .totals-gov-right { width: 260px; border: 2px solid #000; }
+  .tgr-row { display: flex; justify-content: space-between; padding: 3px 8px; border-bottom: 1px solid #000; }
+  .tgr-row.grand { background: #000; color: white; font-weight: bold; font-size: 11px; }
+  .stamp-area { border: 2px dashed #000; width: 140px; height: 80px; text-align: center; padding-top: 50px; font-size: 9px; color: #555; }
+  .gov-footer { border-top: 2px solid #000; padding: 6px 16px; display: flex; justify-content: space-between; font-size: 9px; }
+</style>
+</head>
+<body>
+<div class="gov-title-bar">
+  <h1>Government Medical Services</h1>
+  <p>PATIENT BILLING STATEMENT — OFFICIAL USE ONLY</p>
+</div>
+<div class="gov-header">
+  <img src="{{ logo_path }}" alt="logo">
+  <div class="gov-header-info">
+    <h2>{{ hospital_name }}</h2>
+    <p>{{ hospital_address }}</p>
+    <p>Ph: {{ hospital_phone }}</p>
+    <p>Email: {{ hospital_email }}</p>
+  </div>
+  <div class="gov-header-right">
+    <p><b>BILL NO.:</b> {{ bill_number }}</p>
+    <p><b>DATE:</b> {{ bill_date }}</p>
+    <p><b>ADM.:</b> {{ admission_date }}</p>
+    <p><b>DIS.:</b> {{ discharge_date }}</p>
+    <p><b>MODE:</b> {{ payment_mode }}</p>
+  </div>
+</div>
+<div class="box-section">
+  <div class="box-section-title">Patient Information</div>
+  <div class="box-section-body">
+    <div class="gov-field-row">
+      <div class="gf"><div class="k">Patient Name</div><div class="v">{{ patient_name }}</div></div>
+      <div class="gf"><div class="k">Patient ID</div><div class="v">{{ patient_id }}</div></div>
+      <div class="gf"><div class="k">Age / Sex</div><div class="v">{{ age_sex }}</div></div>
+    </div>
+    <div class="gov-field-row">
+      <div class="gf"><div class="k">Attending Physician</div><div class="v">{{ doctor_name }}</div></div>
+      <div class="gf" style="flex:2"><div class="k">Diagnosis</div><div class="v">{{ diagnosis }}</div></div>
+    </div>
+  </div>
+</div>
+<div class="box-section" style="margin-top:0">
+  <div class="box-section-title">Itemised Charges</div>
+  <table class="items">
+    <thead>
+      <tr>
+        <th style="width:5%">SL.</th>
+        <th style="width:45%">Item / Service Description</th>
+        <th style="width:10%">Qty</th>
+        <th style="width:18%">Unit Rate (₹)</th>
+        <th style="width:18%">Amount (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in line_items %}
+      <tr>
+        <td style="text-align:center">{{ loop.index }}</td>
+        <td>{{ item.description }}</td>
+        <td style="text-align:center">{{ item.qty }}</td>
+        <td style="text-align:right">{{ item.rate }}</td>
+        <td style="text-align:right">{{ item.amount }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="totals-gov">
+  <div class="totals-gov-left">
+    <p><b>Amount in Words:</b></p>
+    <p style="margin-top:4px; font-size:10px; text-transform:uppercase">{{ total_words }}</p>
+    <div class="stamp-area" style="margin-top:12px">OFFICE STAMP</div>
+  </div>
+  <div class="totals-gov-right">
+    <div class="tgr-row"><span>Gross Amount</span><span>₹ {{ subtotal }}</span></div>
+    <div class="tgr-row"><span>Discount ({{ discount_pct }}%)</span><span>₹ {{ discount_amt }}</span></div>
+    <div class="tgr-row"><span>GST @ {{ tax_pct }}%</span><span>₹ {{ tax_amt }}</span></div>
+    <div class="tgr-row grand"><span>TOTAL PAYABLE</span><span>₹ {{ total }}</span></div>
+  </div>
+</div>
+<div class="gov-footer">
+  <span>This is a system-generated bill. Verify at the hospital accounts section.</span>
+  <span>Signature of Authorised Officer</span>
+</div>
+</body>
+</html>

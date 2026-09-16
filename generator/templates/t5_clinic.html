@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Georgia, "Times New Roman", serif; font-size: 11px; color: #2c2c2c; background: #fff; width: 794px; }
+  .clinic-top { text-align: center; padding: 20px 24px 10px; border-bottom: 1px solid #e0e0e0; }
+  .clinic-top img { width: 70px; height: 70px; object-fit: contain; margin-bottom: 8px; }
+  .clinic-top h1 { font-size: 20px; font-weight: bold; color: #3a7d44; letter-spacing: 1px; }
+  .clinic-top p { font-size: 9px; color: #777; margin-top: 2px; }
+  .clinic-top .tagline { font-style: italic; font-size: 10px; color: #3a7d44; margin-top: 4px; }
+  .invoice-banner { background: #3a7d44; color: white; text-align: center; font-size: 13px; letter-spacing: 3px; padding: 5px; margin: 0; }
+  .info-strip { display: flex; justify-content: space-between; padding: 8px 24px; background: #f0f7f1; font-size: 10px; border-bottom: 1px solid #c8e6c9; }
+  .is-block p { margin-bottom: 1px; }
+  .is-block .k { color: #666; font-size: 9px; }
+  .is-block .v { font-weight: bold; color: #2c2c2c; }
+  .patient-section { padding: 10px 24px; border-bottom: 1px solid #e0e0e0; }
+  .ps-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; }
+  .ps-field .k { font-size: 9px; color: #888; font-style: italic; }
+  .ps-field .v { font-size: 11px; color: #2c2c2c; }
+  .items-section { padding: 10px 24px; }
+  .items-heading { font-size: 12px; font-weight: bold; color: #3a7d44; margin-bottom: 8px; font-style: italic; }
+  .item-row { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 1px dotted #ccc; font-size: 10.5px; }
+  .item-desc { flex: 1; }
+  .item-qty { width: 40px; text-align: center; color: #666; font-size: 9.5px; }
+  .item-rate { width: 70px; text-align: right; color: #666; font-size: 9.5px; }
+  .item-amt { width: 80px; text-align: right; font-weight: bold; }
+  .item-header { display: flex; justify-content: space-between; font-size: 9px; text-transform: uppercase; color: #888; padding: 3px 0; border-bottom: 2px solid #3a7d44; margin-bottom: 4px; }
+  .totals-list { padding: 8px 24px; border-top: 1px solid #e0e0e0; }
+  .tl-row { display: flex; justify-content: flex-end; gap: 0; margin-bottom: 3px; font-size: 10.5px; }
+  .tl-label { width: 180px; text-align: right; padding-right: 20px; color: #555; }
+  .tl-value { width: 100px; text-align: right; }
+  .tl-row.grand .tl-label { color: #3a7d44; font-weight: bold; font-size: 12px; }
+  .tl-row.grand .tl-value { font-weight: bold; font-size: 14px; color: #3a7d44; border-top: 2px solid #3a7d44; }
+  .clinic-footer { padding: 10px 24px; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #e0e0e0; font-size: 9px; color: #888; }
+  .sig-line { border-top: 1px solid #555; width: 140px; text-align: center; padding-top: 4px; font-size: 9px; }
+</style>
+</head>
+<body>
+<div class="clinic-top">
+  <img src="{{ logo_path }}" alt="logo">
+  <h1>{{ hospital_name }}</h1>
+  <p>{{ hospital_address }}</p>
+  <p>{{ hospital_phone }} &nbsp;|&nbsp; {{ hospital_email }}</p>
+  <p class="tagline">"Caring for life, one patient at a time"</p>
+</div>
+<div class="invoice-banner">RECEIPT &amp; INVOICE</div>
+<div class="info-strip">
+  <div class="is-block"><p class="k">Invoice No.</p><p class="v">{{ bill_number }}</p></div>
+  <div class="is-block"><p class="k">Invoice Date</p><p class="v">{{ bill_date }}</p></div>
+  <div class="is-block"><p class="k">Admission</p><p class="v">{{ admission_date }}</p></div>
+  <div class="is-block"><p class="k">Discharge</p><p class="v">{{ discharge_date }}</p></div>
+  <div class="is-block"><p class="k">Payment</p><p class="v">{{ payment_mode }}</p></div>
+</div>
+<div class="patient-section">
+  <div class="ps-grid">
+    <div class="ps-field"><div class="k">Patient Name</div><div class="v">{{ patient_name }}</div></div>
+    <div class="ps-field"><div class="k">Patient ID</div><div class="v">{{ patient_id }}</div></div>
+    <div class="ps-field"><div class="k">Age / Sex</div><div class="v">{{ age_sex }}</div></div>
+    <div class="ps-field"><div class="k">Doctor</div><div class="v">{{ doctor_name }}</div></div>
+    <div class="ps-field" style="grid-column:span 2"><div class="k">Diagnosis</div><div class="v">{{ diagnosis }}</div></div>
+  </div>
+</div>
+<div class="items-section">
+  <div class="items-heading">Itemised Bill</div>
+  <div class="item-header">
+    <span style="flex:1">Description</span>
+    <span style="width:40px;text-align:center">Qty</span>
+    <span style="width:70px;text-align:right">Rate (₹)</span>
+    <span style="width:80px;text-align:right">Amount (₹)</span>
+  </div>
+  {% for item in line_items %}
+  <div class="item-row">
+    <span class="item-desc">{{ item.description }}</span>
+    <span class="item-qty">{{ item.qty }}</span>
+    <span class="item-rate">{{ item.rate }}</span>
+    <span class="item-amt">{{ item.amount }}</span>
+  </div>
+  {% endfor %}
+</div>
+<div class="totals-list">
+  <div class="tl-row"><span class="tl-label">Subtotal</span><span class="tl-value">₹ {{ subtotal }}</span></div>
+  <div class="tl-row"><span class="tl-label">Discount ({{ discount_pct }}%)</span><span class="tl-value">- ₹ {{ discount_amt }}</span></div>
+  <div class="tl-row"><span class="tl-label">GST ({{ tax_pct }}%)</span><span class="tl-value">₹ {{ tax_amt }}</span></div>
+  <div class="tl-row grand"><span class="tl-label">TOTAL DUE</span><span class="tl-value">₹ {{ total }}</span></div>
+</div>
+<div class="clinic-footer">
+  <div>
+    <p><i>{{ total_words }}</i></p>
+    <p style="margin-top:4px">Thank you for visiting {{ hospital_name }}. Get well soon!</p>
+  </div>
+  <div class="sig-line">Doctor's Signature</div>
+</div>
+</body>
+</html>
