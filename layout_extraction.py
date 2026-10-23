@@ -27,7 +27,9 @@ _lp_available = False
 if LAYOUT_BACKEND != "opencv":
     try:
         import layoutparser as lp
-        _lp_available = True
+        # The package can import without its Detectron2 backend; only treat it
+        # as available when the model class actually exists.
+        _lp_available = hasattr(lp, "Detectron2LayoutModel")
     except ImportError:
         pass
 

@@ -66,7 +66,8 @@ def _structural_feature_vector(G: nx.Graph) -> np.ndarray:
         cy_vals = [d["centroid"][1] for _, d in G.nodes(data=True)]
         layout_w = max(cx_vals) - min(cx_vals) + 1e-6
         layout_h = max(cy_vals) - min(cy_vals) + 1e-6
-        aspect = layout_w / layout_h
+        # Clip and scale so a very wide/tall layout can't dominate the vector
+        aspect = min(layout_w / layout_h, 2.0) / 2.0
     else:
         aspect = 1.0
 
@@ -105,7 +106,10 @@ def graph_similarity(graph_a: nx.Graph, graph_b: nx.Graph) -> float:
         logger.debug("using structural_fallback")
         fa = _structural_feature_vector(graph_a)
         fb = _structural_feature_vector(graph_b)
-        return (_cosine_sim(fa, fb) + 1) / 2  # map [-1,1] → [0,1]
+        # Features are non-negative, so cosine is already in [0, 1]. The old
+        # (x+1)/2 remap squeezed every score into [0.5, 1] and made the
+        # threshold meaningless.
+        return float(np.clip(_cosine_sim(fa, fb), 0.0, 1.0))
 
     if max(na, nb) > GED_MAX_NODES:
         return _fallback()
@@ -155,8 +159,9 @@ def graph_similarity(graph_a: nx.Graph, graph_b: nx.Graph) -> float:
 
 def embedding_similarity(embedding_a: np.ndarray, embedding_b: np.ndarray) -> float:
     """Cosine similarity normalised to [0, 1]."""
-    raw = _cosine_sim(embedding_a, embedding_b)
-    return (raw + 1) / 2  # map [-1,1] → [0,1]
+    # ResNet penultimate features are post-ReLU (non-negative), so cosine is
+    # already in [0, 1]; clip for safety instead of remapping.
+    return float(np.clip(_cosine_sim(embedding_a, embedding_b), 0.0, 1.0))
 
 
 # ---------------------------------------------------------------------------

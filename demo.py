@@ -96,9 +96,14 @@ def run_demo(img_a: str, img_b: str, save_path: str = None,
     cs = combined_fraud_score(gs, es)
     ts = text_similarity(str(path_a), str(path_b))
 
-    threshold = 0.6
-    struct_verdict = "FRAUD" if cs >= threshold else "CLEAN"
-    text_verdict = "FRAUD" if ts >= threshold else "CLEAN"
+    # Thresholds calibrated by evaluate.py (fallback 0.6 if not run yet)
+    import json
+    cal_path = OUTPUT_DIR / "calibration.json"
+    cal = json.loads(cal_path.read_text(encoding="utf-8")) if cal_path.exists() else {}
+    struct_thr = cal.get("structural_threshold", 0.6)
+    text_thr = cal.get("text_threshold", 0.6)
+    struct_verdict = "FRAUD" if cs >= struct_thr else "CLEAN"
+    text_verdict = "FRAUD" if ts >= text_thr else "CLEAN"
     gt_str = ground_truth.upper() if ground_truth else "N/A"
 
     # Print score block

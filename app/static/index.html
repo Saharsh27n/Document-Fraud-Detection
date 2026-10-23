@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Template Fraud Detection</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --ink: #1d2433; --muted: #5d6676; --line: #dde1e7;
+    --accent: #2d5bd7; --red: #c62828; --red-bg: #fdecec; --amber: #b26a00; --amber-bg: #fff4e0;
+    --green: #2e7d32; --green-bg: #e8f5e9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 24px; }
+  header h1 { margin: 0; font-size: 18px; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .tabs { display: flex; gap: 4px; margin-top: 12px; }
+  .tab { border: 1px solid var(--line); background: var(--bg); padding: 6px 14px; border-radius: 6px;
+         cursor: pointer; font: inherit; }
+  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px;
+          margin-bottom: 16px; }
+  .card h2 { margin: 0 0 10px; font-size: 15px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  select, input[type=file] { font: inherit; padding: 6px 8px; border: 1px solid var(--line);
+                             border-radius: 6px; background: #fff; max-width: 100%; }
+  button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+                   padding: 8px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary:disabled { opacity: .5; cursor: wait; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .cell { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .cell .t { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .cell img { width: 100%; height: 420px; object-fit: contain; background: #fafafa; border-radius: 4px; }
+  .scores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .score { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .score .k { font-size: 12px; color: var(--muted); }
+  .score .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+  .red { background: var(--red-bg); color: var(--red); }
+  .amber { background: var(--amber-bg); color: var(--amber); }
+  .green { background: var(--green-bg); color: var(--green); }
+  .verdict { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .err { color: var(--red); }
+  img.roc { width: 100%; max-width: 1000px; }
+  @media (max-width: 900px) { .grid, .scores { grid-template-columns: 1fr; } .cell img { height: 300px; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="/static/vendor/react.production.min.js"></script>
+<script src="/static/vendor/react-dom.production.min.js"></script>
+<script src="/static/vendor/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const TYPE_LABELS = {
+  same_template_diff_content: "A · Same template, different content (fraud)",
+  same_template_diff_logo: "B · Same template, swapped logo (fraud)",
+  different_template: "C · Different templates (clean)",
+  same_issuer_updated_template: "D · Same issuer, updated template (clean)",
+};
+
+const fmt = v => (v === null || v === undefined || v === "") ? "—" : Number(v).toFixed(3);
+
+function Verdict({ v, band }) {
+  if (!v) return <span className="pill">n/a</span>;
+  const cls = band || (v === "FRAUD" ? "red" : "green");
+  const text = band === "amber" ? "REVIEW" : v;
+  return <span className={"pill " + cls}>{text}</span>;
+}
+
+function ComparePage() {
+  const [pairs, setPairs] = useState([]);
+  const [ptype, setPtype] = useState("same_template_diff_content");
+  const [pairId, setPairId] = useState(null);
+  const [fileA, setFileA] = useState(null);
+  const [fileB, setFileB] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState(null);
+  const [err, setErr] = useState(null);
+  const [stamp, setStamp] = useState(Date.now());
+
+  useEffect(() => { fetch("/api/pairs").then(r => r.json()).then(setPairs).catch(e => setErr(String(e))); }, []);
+
+  const options = pairs.filter(p => p.pair_type === ptype)
+                       .sort((a, b) => (b.ocr_cached - a.ocr_cached) || (a.id - b.id));
+  useEffect(() => { if (options.length) setPairId(options[0].id); }, [ptype, pairs.length]);
+  const pair = pairs.find(p => p.id === pairId);
+
+  async function run(req) {
+    setBusy(true); setErr(null);
+    try {
+      const r = await req();
+      if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+      setRes({ ...(await r.json()), pair: req.pair });
+      setStamp(Date.now());
+    } catch (e) { setErr(String(e.message || e)); }
+    setBusy(false);
+  }
+  const compareFor = (pr) => {
+    const req = () => fetch("/api/compare", { method: "POST", headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ doc_a: pr.doc_a, doc_b: pr.doc_b }) });
+    req.pair = pr; run(req);
+  };
+  const comparePair = () => compareFor(pair);
+  // Showcase pairs chosen from the evaluation run (ids are rows of labels.csv)
+  const SHOWCASE = [
+    { id: 2, label: "1 · Fraud: logo swapped, text check misses it" },
+    { id: 76, label: "2 · Same issuer, new template: text check false alarm" },
+    { id: 90, label: "3 · Different templates: clean" },
+  ];
+  const compareUpload = () => {
+    const fd = new FormData(); fd.append("file_a", fileA); fd.append("file_b", fileB);
+    const req = () => fetch("/api/upload", { method: "POST", body: fd });
+    req.pair = null; run(req);
+  };
+
+  const img = (url, title) => (
+    <div className="cell"><div className="t">{title}</div><img src={url + "?t=" + stamp} alt={title} /></div>
+  );
+
+  return (
+    <>
+      <div className="card">
+        <h2>Pick a labelled pair</h2>
+        <div className="row">
+          <label className="f">Pair type
+            <select value={ptype} onChange={e => setPtype(e.target.value)}>
+              {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label className="f">Pair
+            <select value={pairId ?? ""} onChange={e => setPairId(Number(e.target.value))}>
+              {options.map(p => <option key={p.id} value={p.id}>
+                #{p.id}: {p.template_a} vs {p.template_b} {p.ocr_cached ? "" : "(slow: OCR not cached)"}
+              </option>)}
+            </select>
+          </label>
+          <button className="primary" disabled={busy || !pair} onClick={comparePair}>
+            {busy ? "Analysing…" : "Compare"}
+          </button>
+        </div>
+        {pair && <p className="muted">
+          A: {pair.doc_a} · {pair.hospital_a}&nbsp;&nbsp;|&nbsp;&nbsp;B: {pair.doc_b} · {pair.hospital_b}
+        </p>}
+        <h2 style={{ marginTop: 16 }}>Showcase pairs</h2>
+        <div className="row">
+          {SHOWCASE.map(sc => { const pr = pairs.find(p => p.id === sc.id);
+            return pr && <button key={sc.id} className="tab" disabled={busy} onClick={() => compareFor(pr)}>{sc.label}</button>; })}
+        </div>
+        <h2 style={{ marginTop: 16 }}>…or upload two invoice images</h2>
+        <div className="row">
+          <label className="f">Invoice A<input type="file" accept="image/png,image/jpeg" onChange={e => setFileA(e.target.files[0])} /></label>
+          <label className="f">Invoice B<input type="file" accept="image/png,image/jpeg" onChange={e => setFileB(e.target.files[0])} /></label>
+          <button className="primary" disabled={busy || !fileA || !fileB} onClick={compareUpload}>Compare uploads</button>
+        </div>
+        <p className="muted">Uploads run OCR for the text baseline, so they take 10–20 s.</p>
+        {err && <p className="err">{err}</p>}
+      </div>
+
+      {res && <>
+        <div className="card">
+          <h2>Scores</h2>
+          <div className="scores">
+            <div className="score"><div className="k">Text similarity (naive OCR baseline)</div>
+              <div className="v">{fmt(res.scores.text_sim)}</div>
+              <Verdict v={res.text_verdict} /> <span className="muted">thr {fmt(res.calibration.text_threshold)}</span></div>
+            <div className="score"><div className="k">Graph similarity (layout structure)</div>
+              <div className="v">{fmt(res.scores.graph_sim)}</div></div>
+            <div className="score"><div className="k">Embedding similarity (skeleton CNN)</div>
+              <div className="v">{fmt(res.scores.embedding_sim)}</div></div>
+            <div className="score"><div className="k">Combined structural fraud score</div>
+              <div className="v">{fmt(res.scores.combined_score)}</div>
+              <Verdict v={res.structural_verdict} band={res.structural_band} /> <span className="muted">thr {fmt(res.calibration.structural_threshold)}</span></div>
+          </div>
+          <div className="verdict">
+            <div>Naive text system says: <Verdict v={res.text_verdict} /></div>
+            <div>Our structural system says: <Verdict v={res.structural_verdict} band={res.structural_band} /></div>
+            {res.pair && <div>Ground truth: <Verdict v={res.pair.is_fraud ? "FRAUD" : "CLEAN"} />
+              <span className="muted"> ({TYPE_LABELS[res.pair.pair_type]})</span></div>}
+          </div>
+          <p className="muted">Combined score = 0.5 × graph + 0.5 × embedding. Text is deliberately excluded; it is only the baseline.</p>
+        </div>
+        <div className="grid">
+          {img(res.a.original_url, "Invoice A (original)")}
+          {img(res.a.skeleton_url, "Skeleton A (text masked out)")}
+          {img(res.a.graph_url, `Spatial graph A: ${res.a.n_nodes} nodes, ${res.a.n_edges} edges`)}
+          {img(res.b.original_url, "Invoice B (original)")}
+          {img(res.b.skeleton_url, "Skeleton B (text masked out)")}
+          {img(res.b.graph_url, `Spatial graph B: ${res.b.n_nodes} nodes, ${res.b.n_edges} edges`)}
+        </div>
+      </>}
+    </>
+  );
+}
+
+function ResultsPage() {
+  const [data, setData] = useState(null);
+  useEffect(() => { fetch("/api/results").then(r => r.json()).then(setData); }, []);
+  if (!data) return <p>Loading…</p>;
+  const overall = data.summary.filter(r => r.method === "structural" || r.method === "text_baseline");
+  const types = Object.keys(TYPE_LABELS);
+  const row = (m, t) => data.summary.find(r => r.method === `${m}_${t}`);
+  const cal = data.calibration;
+  return (
+    <>
+      <div className="card">
+        <h2>Overall: structural method vs text baseline (held-out test half)</h2>
+        <p className="muted">Thresholds were chosen on a separate calibration half ({cal.n_calibration_pairs} pairs) using
+          Youden's J and evaluated on {cal.n_test_pairs} unseen pairs. ROC-AUC/PR-AUC use all pairs.</p>
+        <table>
+          <thead><tr><th>Method</th><th className="num">Threshold</th><th className="num">Accuracy</th><th className="num">Precision</th>
+            <th className="num">Recall</th><th className="num">F1</th><th className="num">ROC-AUC</th><th className="num">PR-AUC</th></tr></thead>
+          <tbody>{overall.map(r => <tr key={r.method}>
+            <td>{r.method === "structural" ? "Structural (graph + embedding)" : "Text baseline (OCR)"}</td>
+            <td className="num">{fmt(r.threshold)}</td><td className="num">{fmt(r.accuracy)}</td><td className="num">{fmt(r.precision)}</td>
+            <td className="num">{fmt(r.recall)}</td><td className="num">{fmt(r.f1)}</td>
+            <td className="num">{fmt(r.roc_auc)}</td><td className="num">{fmt(r.pr_auc)}</td></tr>)}</tbody>
+        </table>
+      </div>
+      <div className="card">
+        <h2>Per pair type (test half): share of pairs labelled correctly</h2>
+        <table>
+          <thead><tr><th>Pair type</th><th className="num">n</th><th className="num">Structural</th><th className="num">Text baseline</th>
+            <th className="num">Mean combined score</th><th className="num">Mean text sim</th></tr></thead>
+          <tbody>{types.map(t => {
+            const s = row("structural", t), x = row("text_baseline", t);
+            const m = data.mean_scores_by_type.find(r => r.pair_type === t) || {};
+            return <tr key={t}><td>{TYPE_LABELS[t]}</td><td className="num">{s ? s.n_pairs : "—"}</td>
+              <td className="num">{s ? fmt(s.accuracy) : "—"}</td><td className="num">{x ? fmt(x.accuracy) : "—"}</td>
+              <td className="num">{fmt(m.combined_score)}</td><td className="num">{fmt(m.text_sim)}</td></tr>;
+          })}</tbody>
+        </table>
+      </div>
+      <div className="card">
+        <h2>ROC and precision-recall curves</h2>
+        <img className="roc" src={data.roc_url + "?t=" + Date.now()} alt="ROC and PR curves" />
+      </div>
+    </>
+  );
+}
+
+function App() {
+  const [tab, setTab] = useState("compare");
+  return (
+    <>
+      <header>
+        <h1>Structure-Invariant Document Fingerprinting</h1>
+        <p>SIH1441 · Detecting fraudulent medical invoice template reuse from layout structure, not text</p>
+        <div className="tabs">
+          <button className={"tab " + (tab === "compare" ? "active" : "")} onClick={() => setTab("compare")}>Compare invoices</button>
+          <button className={"tab " + (tab === "results" ? "active" : "")} onClick={() => setTab("results")}>Evaluation results</button>
+        </div>
+      </header>
+      <main>{tab === "compare" ? <ComparePage /> : <ResultsPage />}</main>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
